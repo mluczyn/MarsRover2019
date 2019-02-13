@@ -23,7 +23,28 @@ std::queue<MotionPhase> phaseQueue;
 
 void ballCoordCallback(const geometry_msgs::Vector3::ConstPtr& coords)
 {
+  double optimalVelocity = MAXLV;
+  double omega = ANGV;
+
+  std::queue<MotionPhase> newQueue;
+  //First phase: accelerate to optimal linear velocity
+  double dur1 = optimalVelocity/ ACCEL;
+  newQueue.push_back({std::chrono::duration<double>(dur1), optimalVelocity, 0.0f});
+  double newy = coords.y - dur1 * optimalVelocity / 2.0; 
+
+  //Second phase: match heading
+  double theta = atan(coords.x/newy);
+  newQueue.push_back({std::chrono::duration<double>(theta/omega), optimalVelocity, omega});
+
+  double chordLen = 2.0 * (optimalVelocity / omega) * sin(theta / 2);
+  double ballDist = newy * sec(theta);
+  double phi = theta / 2;
+  double dist3 = sqrt((chordLen ^ 2) + (ballDist ^ 2) - 2 * chordLen * ballDist * cos(phi));
+  double dur3 = dist3 / optimalVelocity;
+  newQueue.push_back({std::chrono::duration<double>(dur3), optimalVelocity, 0.0f});
   
+  newQueue.push_back({std::chrono::duration<double>(0), 0, 0});
+  phaseQueue = newQueue;
 }
 int main(int argc, char** argv)
 {
